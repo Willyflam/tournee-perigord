@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d2420">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Tournée prospects Périgord</title>
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+/* Layout: carnet de tournée — barre d'en-tête, liste des prospects à gauche, fiche d'enquête à droite (empilées sur téléphone) */
+:root{
+  --bg:#eef0ec; --surface:#ffffff; --sunk:#e3e6e0; --line:#cfd4cb;
+  --fg:#1d2420; --muted:#5d6760; --accent:#c8780a; --accent-ink:#ffffff; --accent-soft:#f6e6cc;
+  --ok:#2f7d4f; --ok-soft:#dcefe2; --warn:#a86a00; --warn-soft:#f7ebcf; --bad:#b0412e; --bad-soft:#f5dcd6; --info:#2f5f8a; --info-soft:#dbe7f2;
+  --display:"Roboto Condensed","Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"Roboto Mono",Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1d2421; --sunk:#252d29; --line:#36403b;
+  --fg:#e7ebe7; --muted:#9aa59e; --accent:#e9a23b; --accent-ink:#1a1408; --accent-soft:#3a2e18;
+  --ok:#6cc08d; --ok-soft:#1f3328; --warn:#e3b45a; --warn-soft:#3a3020; --bad:#e58a76; --bad-soft:#3b2420; --info:#86b3dc; --info-soft:#1e2d3b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1d2421; --sunk:#252d29; --line:#36403b;
+  --fg:#e7ebe7; --muted:#9aa59e; --accent:#e9a23b; --accent-ink:#1a1408; --accent-soft:#3a2e18;
+  --ok:#6cc08d; --ok-soft:#1f3328; --warn:#e3b45a; --warn-soft:#3a3020; --bad:#e58a76; --bad-soft:#3b2420; --info:#86b3dc; --info-soft:#1e2d3b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:16px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:3px solid var(--fg);padding-bottom:12px}
+h1{font:700 30px/1 var(--display);letter-spacing:.01em;margin:0;text-transform:uppercase}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.meter{min-width:220px;flex:0 1 280px}
+.meter .lbl{display:flex;justify-content:space-between;font:500 12px var(--mono);color:var(--muted)}
+.meter .lbl b{color:var(--fg);font-weight:500}
+.bar{height:10px;background:var(--sunk);border-radius:2px;overflow:hidden;margin-top:4px;background-image:repeating-linear-gradient(-45deg,transparent 0 6px,rgba(0,0,0,.04) 6px 12px)}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.sync{display:flex;align-items:center;gap:6px;margin-top:8px;font:500 12px var(--mono);color:var(--muted)}
+.sync .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.sync.ok .dot{background:var(--ok)} .sync.ok{color:var(--ok)}
+.sync.wait .dot{background:var(--warn)} .sync.wait{color:var(--warn)}
+.sync.off .dot{background:var(--bad)} .sync.off{color:var(--bad)}
+.draftnote{background:var(--info-soft);color:var(--info);font-size:13px;padding:8px 18px}
+nav.tabs{display:flex;gap:4px;margin:16px 0}
+nav.tabs button{font:600 15px var(--display);letter-spacing:.06em;text-transform:uppercase;background:transparent;border:1px solid var(--line);color:var(--muted);padding:8px 16px;border-radius:var(--r);cursor:pointer}
+nav.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 14px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.small{padding:4px 10px;font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)} .grid.detail-open .list-col{display:none} .grid:not(.detail-open) .detail-col{display:none}}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.filters input,.filters select{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;min-width:0}
+.filters input{flex:1 1 100%}
+.filters select{flex:1 1 40%}
+.count{font:500 12px var(--mono);color:var(--muted);margin:4px 2px 8px;display:flex;justify-content:space-between;align-items:center}
+ul.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ul.plist li button{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:var(--r);padding:10px 12px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px}
+ul.plist li button:hover{border-color:var(--fg)}
+ul.plist li button.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+ul.plist li button.pA{border-left-color:var(--accent)}
+ul.plist li button.pB{border-left-color:var(--muted)}
+.pn{font-weight:600;overflow-wrap:anywhere}
+.pm{color:var(--muted);font-size:13px}
+.pill{display:inline-block;font:500 11px var(--mono);padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+.s-contacter{background:var(--sunk);color:var(--muted)}
+.s-rdv{background:var(--info-soft);color:var(--info)}
+.s-visite{background:var(--ok-soft);color:var(--ok)}
+.s-suivre{background:var(--warn-soft);color:var(--warn)}
+.s-non{background:var(--bad-soft);color:var(--bad)}
+.right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.mono{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.empty{padding:28px 20px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--fg);font:600 18px var(--display);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+form.fiche{padding:4px 18px 18px}
+.fhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);background:var(--surface);z-index:2;border-radius:var(--r) var(--r) 0 0}
+.fhead h2{font:700 22px/1.1 var(--display);text-transform:uppercase;margin:0;overflow-wrap:anywhere;min-width:0;flex:1 1 200px}
+.fhead .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.saved{font:500 12px var(--mono);color:var(--muted)}
+fieldset{border:0;border-top:1px solid var(--line);margin:0;padding:16px 0 4px}
+fieldset:first-of-type{border-top:0}
+legend{font:600 14px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);padding:0 0 8px;float:left;width:100%}
+legend small{font:400 12px var(--body);letter-spacing:0;text-transform:none;color:var(--muted);margin-left:6px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 14px;clear:both}
+.fields .wide{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
+label.f input,label.f select,label.f textarea{font-size:15px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;width:100%;min-width:0}
+label.f textarea{min-height:64px;resize:vertical}
+.scale{display:flex;gap:4px;flex-wrap:wrap}
+.scale label{flex:1 1 0;min-width:36px}
+.scale input{position:absolute;opacity:0;pointer-events:none}
+.scale span{display:block;text-align:center;padding:7px 0;border:1px solid var(--line);border-radius:4px;background:var(--bg);font:500 14px var(--mono);cursor:pointer;color:var(--fg)}
+.scale input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.scale input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.scale-cap{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400}
+.tblwrap{overflow-x:auto;clear:both}
+table.parc{width:100%;border-collapse:collapse;min-width:620px}
+table.parc th{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.parc td{padding:4px 3px;border-bottom:1px dashed var(--line)}
+table.parc input,table.parc select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 6px;font-size:14px;min-width:0}
+table.parc td.n input{width:64px;font-family:var(--mono)}
+table.parc td.x{width:32px}
+.iconbtn{background:none;border:0;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px}
+.iconbtn:hover{color:var(--bad)}
+.parc-total{font:500 12px var(--mono);color:var(--muted);margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.back{display:none}
+@media (max-width:820px){.back{display:inline-flex}}
+.confirm{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--bad)}
+/* Synthèse */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{padding:12px 14px}
+.kpi .k{font:600 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font:700 30px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.kpi .h{font-size:12px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.panel{padding:14px 16px}
+.panel h3{font:600 15px var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px}
+.hbar{display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr) 44px;gap:8px;align-items:center;font-size:13px;margin-bottom:6px}
+.hbar .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar .b{height:12px;background:var(--sunk);border-radius:2px;overflow:hidden}
+.hbar .b i{display:block;height:100%;background:var(--muted)}
+.hbar .b i.acc{background:var(--accent)}
+.hbar .n{font:500 12px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+ul.proj{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+ul.proj li{font-size:14px;border-left:3px solid var(--accent);padding-left:10px}
+ul.proj li b{display:block}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:var(--r);padding:10px 14px;font-size:14px;margin-bottom:12px}
+
+.score{display:inline-block;min-width:34px;text-align:center;font:600 12px var(--mono);padding:2px 6px;border-radius:4px}
+.sc-hi{background:var(--ok-soft);color:var(--ok)}.sc-mid{background:var(--warn-soft);color:var(--warn)}.sc-lo{background:var(--sunk);color:var(--muted)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.toolbar .grp{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toolbar select,.quickadd input{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;font-size:15px;min-width:0}
+.nearlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.near{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;position:relative}
+.route .near{padding-left:46px}
+.step{position:absolute;left:10px;top:10px;width:26px;height:26px;border-radius:50%;background:var(--fg);color:var(--bg);font:600 13px var(--mono);display:grid;place-items:center}
+.near-main{display:flex;flex-direction:column;min-width:0}
+.near-main .lnk{background:none;border:0;padding:0;text-align:left;font-weight:600;font-size:16px;color:var(--fg);cursor:pointer}
+.near-side{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end}
+.near-acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.near-acts a{text-decoration:none;color:var(--fg)}
+a.btn{text-decoration:none;display:inline-block;color:var(--fg)}a.btn.primary{color:var(--accent-ink)}
+.passbtns{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.lastpass{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.quickadd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto;gap:8px}
+@media (max-width:560px){.quickadd{grid-template-columns:1fr}}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+.thumbs figure{margin:0}.thumbs img{width:100%;height:90px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
+.thumbs figcaption{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.geoinfo{font:12px var(--mono);color:var(--muted);grid-column:1/-1}
+nav.tabs{overflow-x:auto}nav.tabs button{flex:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Tournée prospects Périgord</h1>
+      <div class="sub">Étude terrain : parc installé, prestataire actuel, besoins et projets des entreprises de la zone</div>
+    </div>
+    <div class="meter" aria-label="Avancement des visites">
+      <div class="lbl"><span>Visites réalisées</span><span><b id="mVis">0</b> / 50</span></div>
+      <div class="bar"><i id="mBar" style="width:0%"></i></div>
+      <div class="sync" id="sync" role="status" aria-live="polite"><span class="dot"></span><span id="syncTxt">Connexion…</span></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tabP" aria-selected="true" data-tab="p">Prospects</button>
+    <button role="tab" id="tabG" aria-selected="false" data-tab="g">Autour de moi</button>
+    <button role="tab" id="tabJ" aria-selected="false" data-tab="j">Tournée</button>
+    <button role="tab" id="tabZ" aria-selected="false" data-tab="z">Zones</button>
+    <button role="tab" id="tabS" aria-selected="false" data-tab="s">Synthèse</button>
+    <button role="tab" id="tabD" aria-selected="false" data-tab="d">Données</button>
+  </nav>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="viewP">
+    <div class="grid" id="grid">
+      <div class="list-col">
+        <div class="filters">
+          <input id="q" type="search" placeholder="Rechercher une entreprise, une ville…" aria-label="Rechercher">
+          <select id="fSect" aria-label="Filtrer par secteur"><option value="">Tous secteurs</option></select>
+          <select id="fStat" aria-label="Filtrer par statut"><option value="">Tous statuts</option></select>
+          <select id="fTri" aria-label="Trier"><option value="score">Tri : score</option><option value="prio">Tri : priorité</option><option value="nom">Tri : nom</option></select>
+        </div>
+        <div class="count"><span id="cnt">Chargement…</span><button class="btn small primary" id="addBtn" type="button">+ Prospect</button></div>
+        <ul class="plist" id="plist"></ul>
+      </div>
+      <div class="detail-col" id="detail">
+        <div class="card empty"><strong>Aucune fiche ouverte</strong>Choisissez une entreprise dans la liste pour préparer ou saisir la visite, ou ajoutez un prospect.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="viewG" hidden></section>
+  <section id="viewJ" hidden></section>
+  <section id="viewZ" hidden></section>
+  <section id="viewS" hidden></section>
+
+  <section id="viewD" hidden>
+    <div class="cols">
+      <div class="card panel">
+        <h3>Envoyer mes fiches vers la Tournée en ligne</h3>
+        <p class="note">Crée un fichier avec toutes les fiches de ce téléphone. Au bureau, ouvrez la Tournée sur claude.ai, onglet Données, et importez ce fichier.</p>
+        <p><button class="btn primary" id="expJson" type="button">Exporter les fiches</button></p>
+        <p class="note" id="lastExp"></p>
+      </div>
+      <div class="card panel">
+        <h3>Recevoir des fiches</h3>
+        <p class="note">Importez un fichier exporté depuis la Tournée en ligne ou un autre téléphone. Pour chaque entreprise, la fiche la plus récente est conservée.</p>
+        <p><label class="btn" for="impFile" style="display:inline-block">Importer un fichier</label><input id="impFile" type="file" accept=".json,application/json" hidden></p>
+        <p class="note" id="impMsg"></p>
+      </div>
+      <div class="card panel">
+        <h3>Localiser et compléter les fiches</h3>
+        <p class="note">À faire une fois avec du réseau, puis après chaque import. L'appli cherche la position GPS de chaque entreprise, son SIRET, son activité et sa tranche d'effectif dans les bases publiques de l'État (annuaire des entreprises, Base Adresse Nationale). Vos propres saisies ne sont jamais écrasées.</p>
+        <p><button class="btn primary" id="enrichBtn" type="button">Localiser et compléter</button></p>
+        <p class="note" id="enrichMsg"></p>
+      </div>
+      <div class="card panel">
+        <h3>Exporter vers Excel</h3>
+        <p class="note">Un fichier CSV lisible dans Excel, LibreOffice ou Google Sheets : une ligne par entreprise, avec le parc relevé.</p>
+        <p><button class="btn" id="expCsv" type="button">Exporter pour Excel</button></p>
+      </div>
+      <div class="card panel">
+        <h3>Sur ce téléphone</h3>
+        <p class="note" id="storeInfo"></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const SECTEURS=["Agroalimentaire","Bois et papier","Industrie","Luxe et maroquinerie","Vin et agricole","Matériaux et BTP","Logistique et distribution","Autre"];
+const STATUTS=[["contacter","À contacter"],["rdv","RDV pris"],["visite","Visité"],["suivre","À relancer"],["non","Pas intéressé"]];
+const TYPES=["Frontal électrique","Frontal thermique","Transpalette électrique","Transpalette manuel","Gerbeur","Préparateur de commandes","Chariot à mât rétractable","Tout-terrain / télescopique","Autre"];
+const ENERGIES=["Plomb","Lithium-ion","Diesel","GPL","Manuel"];
+const DEPTS=["24","16","19","33","46","47","87","Autre"];
+const OBJECTIF=50;
+
+const $=s=>document.querySelector(s);
+const el=(tag,attrs={},...kids)=>{const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(v==null||v===false)continue;if(k==="class")e.className=v;else if(k==="text")e.textContent=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else e.setAttribute(k,v===true?"":v)}for(const c of kids.flat()){if(c==null)continue;e.append(c.nodeType?c:document.createTextNode(c))}return e};
+const statLabel=v=>(STATUTS.find(s=>s[0]===v)||STATUTS[0])[1];
+const num=v=>{const n=parseFloat(String(v??"").replace(",","."));return isFinite(n)?n:0};
+const fmtEur=n=>n.toLocaleString("fr-FR",{maximumFractionDigits:0})+" €";
+
+let db=true, user=null, canWrite=true;
+let items=new Map(); // id -> data
+let selId=null, dirty=false;
+
+for(const s of SECTEURS)$("#fSect").append(el("option",{value:s,text:s}));
+for(const[v,l]of STATUTS)$("#fStat").append(el("option",{value:v,text:l}));
+
+/* ---------- Onglets ---------- */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+  const t=b.dataset.tab;
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",String(x===b)));
+  for(const[k,sel]of Object.entries({p:"#viewP",g:"#viewG",j:"#viewJ",z:"#viewZ",s:"#viewS",d:"#viewD"}))$(sel).hidden=k!==t;
+  if(t==="d")renderData();if(t==="s")renderSynthese();if(t==="g")renderAutour();if(t==="j")renderTournee();if(t==="z")renderZones();
+}));
+
+/* ---------- Liste ---------- */
+["#q","#fSect","#fStat","#fTri"].forEach(s=>$(s).addEventListener("input",renderList));
+function filtered(){
+  const q=$("#q").value.trim().toLowerCase(), fs=$("#fSect").value, ft=$("#fStat").value;
+  const prio={A:0,B:1,C:2};
+  return[...items.entries()].filter(([id,d])=>{
+    if(fs&&d.secteur!==fs)return false;
+    if(ft&&(d.statut||"contacter")!==ft)return false;
+    if(q&&!`${d.nom} ${d.ville} ${d.secteur} ${d.contact||""} ${d.za||""} ${d.adresse||""}`.toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>{const t=$("#fTri").value;if(t==="score")return score(b[1])-score(a[1]);if(t==="nom")return String(a[1].nom).localeCompare(b[1].nom,"fr");return (prio[a[1].priorite]??3)-(prio[b[1].priorite]??3)||String(a[1].nom).localeCompare(b[1].nom,"fr")});
+}
+function machinesOf(d){return(d.enquete?.parc||[]).reduce((s,r)=>s+num(r.nb),0)}
+function renderList(){
+  const list=filtered(), ul=$("#plist"); ul.textContent="";
+  $("#cnt").textContent=items.size?`${list.length} entreprise${list.length>1?"s":""} sur ${items.size}`:(db?"Aucun prospect":"Chargement…");
+  if(!items.size&&db){
+    ul.append(el("li",{class:"card empty"},el("strong",{text:"Base vide"}),"Ajoutez votre premier prospect avec le bouton + Prospect."));
+  }
+  for(const[id,d]of list){
+    const st=d.statut||"contacter", m=machinesOf(d);
+    ul.append(el("li",{},el("button",{type:"button",class:`p${d.priorite||"C"}${id===selId?" sel":""}`,onclick:()=>openDetail(id)},
+      el("span",{class:"pn",text:d.nom||"Sans nom"}),
+      el("span",{class:"right"},el("span",{style:"display:flex;gap:6px"},el("span",{class:"score "+scoreCls(score(d)),title:"Score de priorité sur 100",text:String(score(d))}),el("span",{class:`pill s-${st}`,text:statLabel(st)}))),
+      el("span",{class:"pm",text:[d.ville,d.dept?`(${d.dept})`:"",d.secteur?`· ${d.secteur}`:""].filter(Boolean).join(" ")}),
+      el("span",{class:"mono",text:m?`${m} machine${m>1?"s":""}`:(d.priorite?`Priorité ${d.priorite}`:"")})
+    )));
+  }
+  const vis=[...items.values()].filter(d=>d.statut==="visite"||d.statut==="suivre"||(d.enquete&&d.enquete.date)).length;
+  $("#mVis").textContent=vis; $("#mBar").style.width=Math.min(100,vis/OBJECTIF*100)+"%";
+}
+
+/* ---------- Fiche ---------- */
+function field(label,name,val,opts={}){
+  let input;
+  if(opts.options){input=el("select",{name,id:"f_"+name});input.append(el("option",{value:"",text:"—"}));for(const o of opts.options){const[v,l]=Array.isArray(o)?o:[o,o];input.append(el("option",{value:v,text:l,selected:String(val??"")===v}))}}
+  else if(opts.area){input=el("textarea",{name,id:"f_"+name,placeholder:opts.ph||""});input.value=val??""}
+  else{input=el("input",{name,id:"f_"+name,type:opts.type||"text",placeholder:opts.ph||"",inputmode:opts.im||null});input.value=val??""}
+  return el("label",{class:"f"+(opts.wide?" wide":"")},label,input);
+}
+function scale(label,name,val,lo,hi){
+  const box=el("div",{class:"scale",role:"radiogroup","aria-label":label});
+  for(let i=1;i<=5;i++)box.append(el("label",{},el("input",{type:"radio",name,value:String(i),checked:String(val)===String(i)}),el("span",{text:String(i)})));
+  return el("div",{class:"f"},el("label",{class:"f"},label),box,el("div",{class:"scale-cap"},el("span",{text:lo}),el("span",{text:hi})));
+}
+function parcRow(r={}){
+  const sel=(name,opts,v)=>{const s=el("select",{"data-k":name,"aria-label":name});s.append(el("option",{value:"",text:"—"}));for(const o of opts)s.append(el("option",{value:o,text:o,selected:v===o}));return s};
+  const tr=el("tr",{},
+    el("td",{},sel("type",TYPES,r.type)),
+    el("td",{},sel("energie",ENERGIES,r.energie)),
+    el("td",{},el("input",{"data-k":"marque",value:r.marque||"",placeholder:"Marque","aria-label":"Marque"})),
+    el("td",{class:"n"},el("input",{"data-k":"age",value:r.age??"",inputmode:"numeric",placeholder:"ans","aria-label":"Âge moyen"})),
+    el("td",{class:"n"},el("input",{"data-k":"nb",value:r.nb??"",inputmode:"numeric",placeholder:"nb","aria-label":"Nombre"})),
+    el("td",{class:"x"},el("button",{type:"button",class:"iconbtn","aria-label":"Retirer la ligne",onclick:e=>{e.target.closest("tr").remove();markDirty();updParcTotal()}},"×")));
+  return tr;
+}
+function updParcTotal(){const t=[...document.querySelectorAll("#parcBody tr")].reduce((s,tr)=>s+num(tr.querySelector('[data-k="nb"]').value),0);const o=$("#parcTot");if(o)o.textContent=`${t} machine${t>1?"s":""} relevée${t>1?"s":""}`}
+function markDirty(){dirty=true;const s=$("#savedLbl");if(s)s.textContent="Modifications non enregistrées"}
+
+function openDetail(id,isNew){
+  if(dirty&&id!==selId&&!discardOk(id,isNew))return;
+  if(isNew&&!id)id=newId();
+  selId=id; dirty=false; curNew=!!isNew;
+  const dr=lsGet("tp_draft");
+  const fromDraft=dr&&dr.id===id&&dr.data;
+  if(fromDraft)isNew=dr.isNew;
+  curNew=!!isNew;
+  const d=fromDraft?dr.data:(isNew?{statut:"contacter",priorite:"B",dept:"24"}:(items.get(id)||{}));
+  const e=d.enquete||{};
+  const det=$("#detail"); det.textContent="";
+  const saved=el("span",{class:"saved",id:"savedLbl",text:d.maj?`Enregistré le ${new Date(d.maj).toLocaleDateString("fr-FR")}`:(isNew?"Nouveau prospect":"")});
+  const delZone=el("span",{class:"acts"});
+  const head=el("div",{class:"fhead"},
+    el("button",{type:"button",class:"btn small back",onclick:closeDetail},"← Liste"),
+    el("h2",{text:d.nom||"Nouveau prospect"}),
+    el("div",{class:"acts"},saved,delZone,el("button",{type:"submit",class:"btn primary",form:"fiche",disabled:!canWrite},"Enregistrer")));
+  if(!isNew)delZone.append(el("button",{type:"button",class:"btn small danger",disabled:!canWrite,onclick:()=>askDelete(delZone)},"Supprimer"));
+
+  const parcBody=el("tbody",{id:"parcBody"});
+  (e.parc&&e.parc.length?e.parc:[{}]).forEach(r=>parcBody.append(parcRow(r)));
+
+  const form=el("form",{class:"fiche",id:"fiche",autocomplete:"off"},
+    el("fieldset",{},el("legend",{},"Entreprise"),el("div",{class:"fields"},
+      field("Raison sociale","nom",d.nom,{wide:true}),
+      field("Adresse","adresse",d.adresse,{wide:true,ph:"N° et rue"}),
+      field("Code postal","cp",d.cp,{im:"numeric"}),
+      field("Ville","ville",d.ville),
+      field("Zone d'activités","za",d.za,{ph:"ex. ZA de Boulazac"}),
+      field("Département","dept",d.dept,{options:DEPTS}),
+      field("Secteur","secteur",d.secteur,{options:SECTEURS}),
+      field("Priorité","priorite",d.priorite,{options:[["A","A · gros parc ou fort potentiel"],["B","B · potentiel moyen"],["C","C · à qualifier"]]}),
+      field("Statut","statut",d.statut,{options:STATUTS}),
+      field("Contact","contact",d.contact,{ph:"Nom, fonction"}),
+      field("Téléphone","tel",d.tel,{type:"tel"}),
+      field("E-mail","email",d.email,{type:"email"}),
+      field("Source / remarque","source",d.source,{wide:true}),
+      el("div",{class:"geoinfo",text:[d.siret?"SIRET "+d.siret:"",d.naf?"APE "+d.naf:"",d.effectifTr&&EFF_LIB[d.effectifTr]?"Effectif "+EFF_LIB[d.effectifTr]:"",hasGeo(d)?"Position "+(+d.lat).toFixed(4)+", "+(+d.lon).toFixed(4)+(d.geoSrc==="commune"?" (centre de la commune)":""):"Pas encore de position","Score "+score(d)+"/100"].filter(Boolean).join(" · ")}),
+      hasGeo(d)?el("div",{class:"near-acts"},el("a",{class:"btn small",href:mapsDir(d.lat,d.lon),target:"_blank",rel:"noopener"},"Itinéraire Google Maps"),el("a",{class:"btn small",href:wazeDir(d.lat,d.lon),target:"_blank",rel:"noopener"},"Waze")):null)),
+    isNew?null:el("fieldset",{},el("legend",{},"Photos",el("small",{text:"plaque constructeur, carte de visite, site"})),photoBlock(id)),
+    el("fieldset",{},el("legend",{},"Visite"),el("div",{class:"fields"},
+      field("Date de visite","e_date",e.date,{type:"date"}),
+      field("Interlocuteur","e_interlocuteur",e.interlocuteur),
+      field("Fonction","e_fonction",e.fonction,{ph:"Resp. logistique, directeur de site…"}),
+      field("Salariés sur site","e_effectif",e.effectif,{im:"numeric"}),
+      field("Activité logistique","e_activite",e.activite,{options:["1 équipe","2 équipes","3 équipes / continu","Saisonnière"]}),
+      field("Surface de stockage (m²)","e_surface",e.surface,{im:"numeric"}))),
+    el("fieldset",{},el("legend",{},"Parc installé",el("small",{text:"une ligne par famille de machines"})),
+      el("div",{class:"tblwrap"},el("table",{class:"parc"},el("thead",{},el("tr",{},el("th",{text:"Type"}),el("th",{text:"Énergie"}),el("th",{text:"Marque"}),el("th",{text:"Âge moy."}),el("th",{text:"Nb"}),el("th",{}))),parcBody)),
+      el("div",{class:"parc-total"},el("span",{id:"parcTot"}),el("button",{type:"button",class:"btn small",onclick:()=>{parcBody.append(parcRow());markDirty()}},"+ Ligne")),
+      el("div",{class:"fields",style:"margin-top:12px"},
+        field("Mode de détention","e_detention",e.detention,{options:["Achat","Location longue durée","Mixte","Location courte ponctuelle"]}),
+        field("Échéance du contrat ou renouvellement","e_echeance",e.echeance,{ph:"ex. mars 2027"}))),
+    el("fieldset",{},el("legend",{},"Prestataire actuel"),el("div",{class:"fields"},
+      field("Prestataire SAV","e_prestataire",e.prestataire,{ph:"Concession, réparateur…"}),
+      field("Contrat d'entretien","e_contrat",e.contrat,{options:["Oui, full service","Oui, préventif seul","Non, à la demande"]}),
+      field("VGP réalisées par","e_vgp",e.vgp,{ph:"Organisme ou prestataire"}),
+      field("Délai d'intervention constaté","e_delai",e.delai,{options:["Moins de 4 h","Dans la journée","1 à 2 jours","Plus de 2 jours"]}),
+      scale("Satisfaction envers le prestataire","e_satisfaction",e.satisfaction,"Très insatisfait","Très satisfait"),
+      field("Points de frustration","e_irritants",e.irritants,{area:true,wide:true,ph:"Délais, prix, disponibilité des pièces, interlocuteur…"}))),
+    el("fieldset",{},el("legend",{},"Besoins et projets"),el("div",{class:"fields"},
+      field("Besoin de location courte","e_location",e.location,{options:["Non","Ponctuel","Saisonnier (récolte, vendanges…)","Récurrent"]}),
+      field("Horizon du prochain achat","e_horizon",e.horizon,{options:["Moins de 6 mois","6 à 12 mois","12 à 24 mois","Plus de 24 mois","Pas de projet"]}),
+      field("Projets","e_projets",e.projets,{area:true,wide:true,ph:"Renouvellement, extension, passage au lithium, rayonnage…"}),
+      scale("Intérêt pour AntOn (neuf lithium)","e_anton",e.anton,"Aucun","Fort"),
+      scale("Intérêt pour l'occasion Jungheinrich","e_occasion",e.occasion,"Aucun","Fort"),
+      scale("Ouverture à changer de prestataire SAV","e_changer",e.changer,"Fermé","Prêt"))),
+    el("fieldset",{},el("legend",{},"Potentiel et suite"),el("div",{class:"fields"},
+      field("Potentiel annuel estimé (€ HT)","e_potentiel",e.potentiel,{im:"numeric",ph:"SAV + location + ventes"}),
+      field("Prochaine action","e_suite",e.suite,{options:["Envoyer une offre","Rappeler","Démo machine","Relance à l'échéance","Aucune"]}),
+      field("Date de relance","e_relance",e.relance,{type:"date"}),
+      field("Notes","e_notes",e.notes,{area:true,wide:true}))));
+  form.addEventListener("input",e=>{markDirty();if(e.target.closest("#parcBody"))updParcTotal();saveDraftSoon(form)});
+  form.addEventListener("change",()=>{markDirty();saveDraftSoon(form)});
+  form.addEventListener("submit",ev=>{ev.preventDefault();save(form)});
+  det.append(el("div",{class:"card"},head,fromDraft?el("div",{class:"draftnote",text:"Brouillon récupéré : la saisie en cours a été conservée sur ce téléphone. Enregistrez pour la valider."}):null,form));
+  if(fromDraft)dirty=true;
+  updParcTotal();
+  $("#grid").classList.add("detail-open");
+  renderList();
+  if(window.matchMedia("(max-width:820px)").matches)window.scrollTo({top:0});
+}
+function discardOk(){
+  const s=$("#savedLbl"); if(s)s.textContent="Enregistrez ou cliquez à nouveau pour abandonner";
+  if(discardOk.pending){discardOk.pending=false;dirty=false;return true}
+  discardOk.pending=true;setTimeout(()=>discardOk.pending=false,4000);return false;
+}
+function closeDetail(){$("#grid").classList.remove("detail-open")}
+function askDelete(zone){
+  zone.textContent="";
+  zone.append(el("span",{class:"confirm"},"Supprimer définitivement ?",
+    el("button",{type:"button",class:"btn small danger",onclick:()=>{const id=selId;items.delete(id);store.deleted[id]=new Date().toISOString();saveCache();clearDraft(id);selId=null;dirty=false;$("#detail").innerHTML='<div class="card empty"><strong>Fiche supprimée</strong>Choisissez une autre entreprise dans la liste.</div>';closeDetail();renderList()}},"Oui"),
+    el("button",{type:"button",class:"btn small",onclick:()=>{zone.textContent="";zone.append(el("button",{type:"button",class:"btn small danger",onclick:()=>askDelete(zone)},"Supprimer"))}},"Non")));
+}
+function collect(form){
+  const fd=new FormData(form), g=k=>(fd.get(k)??"").toString().trim();
+  const parc=[...document.querySelectorAll("#parcBody tr")].map(tr=>{const o={};tr.querySelectorAll("[data-k]").forEach(i=>{o[i.dataset.k]=i.dataset.k==="nb"||i.dataset.k==="age"?(i.value===""?null:num(i.value)):i.value});return o}).filter(r=>r.type||r.marque||r.nb);
+  const enquete={};
+  for(const k of["date","interlocuteur","fonction","effectif","activite","surface","detention","echeance","prestataire","contrat","vgp","delai","satisfaction","irritants","location","horizon","projets","anton","occasion","changer","potentiel","suite","relance","notes"]){const v=g("e_"+k);if(v!=="")enquete[k]=["satisfaction","anton","occasion","changer","potentiel","effectif","surface"].includes(k)?num(v):v}
+  enquete.parc=parc;
+  const prev=items.get(selId)||{};
+  const data={...prev,nom:g("nom"),adresse:g("adresse"),cp:g("cp"),za:g("za"),ville:g("ville"),dept:g("dept"),secteur:g("secteur"),priorite:g("priorite"),statut:g("statut")||"contacter",contact:g("contact"),tel:g("tel"),email:g("email"),source:g("source"),enquete,maj:new Date().toISOString()};
+  if(enquete.date&&data.statut==="contacter")data.statut="visite";
+  return data;
+}
+function save(form){
+  const data=collect(form), lbl=$("#savedLbl");
+  if(!data.nom){lbl.textContent="Indiquez la raison sociale";form.nom.focus();return}
+  const id=selId;
+  items.set(id,data); saveCache(); clearDraft(id); dirty=false;
+  lbl.textContent="Enregistré sur ce téléphone";
+  form.closest(".card").querySelector("h2").textContent=data.nom;
+  const note=form.closest(".card").querySelector(".draftnote"); if(note)note.remove();
+  if(curNew){curNew=false;openDetail(id)}else renderList();
+}
+$("#addBtn").addEventListener("click",()=>openDetail(null,true));
+
+/* ---------- Stockage local (fonctionne sans réseau) ---------- */
+let curNew=false, draftT=null;
+const SEED={"ahlstrom-rottersac": {"nom": "Ahlstrom Rottersac", "ville": "Lalinde", "dept": "24", "secteur": "Bois et papier", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Papeterie, ville à vérifier. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "blason-d-or": {"nom": "Blason d'Or", "ville": "", "dept": "24", "secteur": "Agroalimentaire", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Ville à vérifier. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "calcaires-et-diorite-du-perigord": {"nom": "Calcaires et Diorite du Périgord", "ville": "", "dept": "24", "secteur": "Matériaux et BTP", "priorite": "C", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Carrière, ville à vérifier. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "corex-board-atlantic": {"nom": "Corex Board Atlantic", "ville": "", "dept": "24", "secteur": "Bois et papier", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Carton, ville à vérifier. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "emmi-desserts-valade": {"nom": "Emmi Desserts Valade", "ville": "Condat-sur-Trincou", "dept": "24", "secteur": "Agroalimentaire", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Desserts. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "euralis-gastronomie": {"nom": "Euralis Gastronomie", "ville": "Sarlat-la-Canéda", "dept": "24", "secteur": "Agroalimentaire", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Charcuterie et foie gras, gros site industriel. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "eurenco-france": {"nom": "Eurenco France", "ville": "Bergerac", "dept": "24", "secteur": "Industrie", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Pyrotechnie : matériel ATEX probable. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "eurovia-aquitaine": {"nom": "Eurovia Aquitaine", "ville": "", "dept": "24", "secteur": "Matériaux et BTP", "priorite": "C", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Ville à vérifier. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "france-tabac": {"nom": "France Tabac", "ville": "Sarlat-la-Canéda", "dept": "24", "secteur": "Vin et agricole", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Union de coopératives, activité saisonnière. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "fromageries-des-chaumes": {"nom": "Fromageries des Chaumes", "ville": "Saint-Antoine-de-Breuilh", "dept": "24", "secteur": "Agroalimentaire", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Produits laitiers. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "fromarsac": {"nom": "Fromarsac", "ville": "Marsac-sur-l'Isle", "dept": "24", "secteur": "Agroalimentaire", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Fromagerie. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "fruisec": {"nom": "Fruisec", "ville": "Terrasson-Lavilledieu", "dept": "24", "secteur": "Agroalimentaire", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Fruits secs. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "groupe-bernier": {"nom": "Groupe Bernier", "ville": "Chancelade", "dept": "24", "secteur": "Bois et papier", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Fabrication de cercueils, bois. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "hermes-maroquinerie": {"nom": "Hermès (maroquinerie)", "ville": "Nontron", "dept": "24", "secteur": "Luxe et maroquinerie", "priorite": "C", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Magasinage léger. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "maroquinerie-nontronnaise": {"nom": "Maroquinerie Nontronnaise", "ville": "Nontron", "dept": "24", "secteur": "Luxe et maroquinerie", "priorite": "C", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "papeteries-de-condat": {"nom": "Papeteries de Condat", "ville": "Le Lardin-Saint-Lazare", "dept": "24", "secteur": "Bois et papier", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Papier couché, gros parc probable. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "phil-poste-imprimerie-du-timbre": {"nom": "Phil@poste (imprimerie du timbre)", "ville": "Boulazac", "dept": "24", "secteur": "Industrie", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Impression sécurisée. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "picandine": {"nom": "Picandine", "ville": "Saint-Astier", "dept": "24", "secteur": "Agroalimentaire", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Fromages. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "polyrey": {"nom": "Polyrey", "ville": "Baneuil", "dept": "24", "secteur": "Industrie", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Stratifiés décoratifs. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "repetto": {"nom": "Repetto", "ville": "Saint-Médard-d'Excideuil", "dept": "24", "secteur": "Luxe et maroquinerie", "priorite": "C", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "sabouraud": {"nom": "Sabouraud", "ville": "Gensac", "dept": "33", "secteur": "Bois et papier", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Scierie et palettes, intervient en Dordogne. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "sobeval": {"nom": "Sobeval", "ville": "Boulazac", "dept": "24", "secteur": "Agroalimentaire", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Viande de veau, froid. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "socat": {"nom": "Socat", "ville": "Terrasson-Lavilledieu", "dept": "24", "secteur": "Industrie", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Pièces aéronautiques. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "st-michel-champagnac": {"nom": "St Michel Champagnac", "ville": "Champagnac-de-Belair", "dept": "24", "secteur": "Agroalimentaire", "priorite": "A", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Biscuiterie. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}, "unidor": {"nom": "Unidor", "ville": "Bergerac", "dept": "24", "secteur": "Vin et agricole", "priorite": "B", "statut": "contacter", "contact": "", "tel": "", "email": "", "source": "Union des caves coopératives de Dordogne, pics aux vendanges. Repérée en ligne (recherche Claude), coordonnées à vérifier", "enquete": {"parc": []}, "maj": "2026-10-05T00:00:00Z"}};
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(_){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(_){return false}}
+function newId(){return "p-"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+let store=lsGet("tpp_store")||{items:SEED,deleted:{},lastExport:"2026-10-05T00:00:00Z"};
+store.deleted=store.deleted||{};
+items=new Map(Object.entries(store.items||{}));
+function saveCache(){store.items=Object.fromEntries(items);if(!lsSet("tpp_store",store)){const b=$("#banner");b.hidden=false;b.textContent="Le téléphone refuse d'enregistrer : mémoire du navigateur pleine ou bloquée. Exportez vos fiches tout de suite."}updSync()}
+function clearDraft(id){const d=lsGet("tp_draft");if(d&&d.id===id){try{localStorage.removeItem("tp_draft")}catch(_){}}}
+function saveDraftSoon(form){clearTimeout(draftT);draftT=setTimeout(()=>{if(!selId)return;lsSet("tp_draft",{id:selId,isNew:curNew,data:collect(form)})},500)}
+function changedSinceExport(){const t=store.lastExport||"";return[...items.values()].filter(d=>(d.maj||"")>t).length+Object.values(store.deleted).filter(x=>x>t).length}
+function updSync(){
+  const n=changedSinceExport(), box=$("#sync"), t=$("#syncTxt");
+  box.className="sync "+(n?"wait":"ok");
+  t.textContent=n?`Enregistré sur ce téléphone · ${n} fiche${n>1?"s":""} à exporter`:"Enregistré sur ce téléphone · tout est exporté";
+}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}h${p(d.getMinutes())}`}
+async function giveFile(name,text,type){
+  const blob=new Blob([text],{type});
+  try{const file=new File([blob],name,{type});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return true}}catch(e){if(e&&e.name==="AbortError")return false}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return true;
+}
+$("#expJson").addEventListener("click",async()=>{
+  const payload={app:"tournee-perigord",v:1,exported:new Date().toISOString(),items:Object.fromEntries(items),deleted:store.deleted};
+  if(await giveFile(`tournee_${stamp()}.json`,JSON.stringify(payload),"application/json")){store.lastExport=payload.exported;saveCache();renderData()}
+});
+const csvCell=v=>{const s=v==null?"":String(v);return /[";\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+$("#expCsv").addEventListener("click",()=>{
+  const cols=[["Entreprise",d=>d.nom],["Adresse",d=>d.adresse],["CP",d=>d.cp],["Ville",d=>d.ville],["Zone",d=>d.za],["SIRET",d=>d.siret],["APE",d=>d.naf],["Effectif",d=>EFF_LIB[d.effectifTr]||""],["Score",d=>score(d)],["Latitude",d=>d.lat],["Longitude",d=>d.lon],["Dép.",d=>d.dept],["Secteur",d=>d.secteur],["Priorité",d=>d.priorite],["Statut",d=>statLabel(d.statut||"contacter")],["Contact",d=>d.contact],["Téléphone",d=>d.tel],["E-mail",d=>d.email],
+   ["Date de visite",d=>d.enquete?.date],["Interlocuteur",d=>d.enquete?.interlocuteur],["Machines",d=>machinesOf(d)],["Parc détaillé",d=>(d.enquete?.parc||[]).map(r=>[r.nb,r.type,r.energie,r.marque,r.age!=null&&r.age!==""?r.age+" ans":""].filter(Boolean).join(" ")).join(" | ")],
+   ["Détention",d=>d.enquete?.detention],["Prestataire SAV",d=>d.enquete?.prestataire],["Contrat",d=>d.enquete?.contrat],["Satisfaction /5",d=>d.enquete?.satisfaction],["Intérêt AntOn /5",d=>d.enquete?.anton],["Intérêt occasion /5",d=>d.enquete?.occasion],["Prêt à changer /5",d=>d.enquete?.changer],
+   ["Location courte",d=>d.enquete?.location],["Horizon d'achat",d=>d.enquete?.horizon],["Projets",d=>d.enquete?.projets],["Potentiel € HT",d=>d.enquete?.potentiel],["Prochaine action",d=>d.enquete?.suite],["Relance",d=>d.enquete?.relance],["Notes",d=>d.enquete?.notes]];
+  const rows=[cols.map(c=>c[0])].concat([...items.values()].sort((a,b)=>String(a.nom).localeCompare(b.nom,"fr")).map(d=>cols.map(c=>c[1](d))));
+  giveFile(`tournee_${stamp()}.csv`,"\ufeff"+rows.map(r=>r.map(csvCell).join(";")).join("\r\n"),"text/csv");
+});
+$("#impFile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f)return;
+  const msg=$("#impMsg");
+  try{
+    const p=JSON.parse(await f.text());
+    if(p.app!=="tournee-perigord")throw new Error("format");
+    let add=0,upd=0,del=0;
+    for(const[id,d]of Object.entries(p.items||{})){const cur=items.get(id);const gone=store.deleted[id];if(gone&&gone>=(d.maj||""))continue;if(!cur){items.set(id,d);add++}else if((d.maj||"")>(cur.maj||"")){items.set(id,d);upd++}}
+    for(const[id,t]of Object.entries(p.deleted||{})){const cur=items.get(id);if(cur&&t>(cur.maj||"")){items.delete(id);del++}if(!store.deleted[id]||t>store.deleted[id])store.deleted[id]=t}
+    saveCache();renderList();
+    msg.textContent=`Import terminé : ${add} ajoutée${add>1?"s":""}, ${upd} mise${upd>1?"s":""} à jour, ${del} supprimée${del>1?"s":""}.`;
+  }catch(_){msg.textContent="Ce fichier n'est pas un export de la Tournée."}
+});
+function renderData(){
+  $("#lastExp").textContent=store.lastExport?`Dernier export : ${new Date(store.lastExport).toLocaleString("fr-FR")}`:"Aucun export pour l'instant.";
+  $("#storeInfo").textContent=`${items.size} entreprises enregistrées sur ce téléphone. Les données restent sur l'appareil tant que vous ne désinstallez pas l'appli ou n'effacez pas les données du navigateur : exportez régulièrement.`;
+}
+
+/* ---------- Synthèse ---------- */
+function hbars(rows,accentFirst){
+  const max=Math.max(1,...rows.map(r=>r[1]));
+  return rows.map(([t,n],i)=>el("div",{class:"hbar"},el("span",{class:"t",title:t,text:t}),el("span",{class:"b"},el("i",{class:accentFirst&&i===0?"acc":"",style:`width:${n/max*100}%`})),el("span",{class:"n",text:String(n)})));
+}
+function tally(arr){const m=new Map();for(const[k,n]of arr){if(!k)continue;m.set(k,(m.get(k)||0)+n)}return[...m.entries()].sort((a,b)=>b[1]-a[1])}
+function renderSynthese(){
+  const v=$("#viewS"); v.textContent="";
+  const all=[...items.values()];
+  const visited=all.filter(d=>d.enquete&&(d.enquete.date||(d.enquete.parc||[]).length));
+  const rows=visited.flatMap(d=>(d.enquete.parc||[]).map(r=>({...r,nb:num(r.nb)||0})));
+  const machines=rows.reduce((s,r)=>s+r.nb,0);
+  const aged=rows.filter(r=>r.age!=null&&r.age!=="");
+  const ageMoy=aged.length?aged.reduce((s,r)=>s+num(r.age)*r.nb,0)/Math.max(1,aged.reduce((s,r)=>s+r.nb,0)):null;
+  const vieux=aged.filter(r=>num(r.age)>=8).reduce((s,r)=>s+r.nb,0);
+  const sats=visited.map(d=>d.enquete.satisfaction).filter(Boolean);
+  const satMoy=sats.length?sats.reduce((a,b)=>a+b,0)/sats.length:null;
+  const ouverts=visited.filter(d=>(d.enquete.changer||0)>=4||(d.enquete.satisfaction&&d.enquete.satisfaction<=2)).length;
+  const potentiel=visited.reduce((s,d)=>s+num(d.enquete.potentiel),0);
+  const kpi=(k,val,h)=>el("div",{class:"card kpi"},el("div",{class:"k",text:k}),el("div",{class:"v",text:val}),el("div",{class:"h",text:h}));
+  v.append(el("div",{class:"kpis"},
+    kpi("Entreprises visitées",`${visited.length}`,`sur ${all.length} prospects · objectif ${OBJECTIF}`),
+    kpi("Machines relevées",`${machines}`,visited.length?`${(machines/visited.length).toFixed(1).replace(".",",")} par site visité`:"aucune visite saisie"),
+    kpi("Âge moyen du parc",ageMoy==null?"—":`${ageMoy.toFixed(1).replace(".",",")} ans`,machines?`${vieux} machines de 8 ans ou plus`:"à renseigner par ligne"),
+    kpi("Satisfaction prestataire",satMoy==null?"—":`${satMoy.toFixed(1).replace(".",",")} / 5`,`${ouverts} site${ouverts>1?"s":""} prêt${ouverts>1?"s":""} à changer`),
+    kpi("Potentiel annuel cumulé",fmtEur(potentiel),"estimations saisies en visite")));
+  if(!visited.length){v.append(el("div",{class:"card empty"},el("strong",{text:"Pas encore de visite saisie"}),"Les répartitions du parc, des marques et des projets apparaîtront ici dès la première fiche de visite enregistrée."));return}
+  const projets=visited.filter(d=>d.enquete.horizon&&d.enquete.horizon!=="Pas de projet"&&d.enquete.horizon!=="Plus de 24 mois").sort((a,b)=>["Moins de 6 mois","6 à 12 mois","12 à 24 mois"].indexOf(a.enquete.horizon)-["Moins de 6 mois","6 à 12 mois","12 à 24 mois"].indexOf(b.enquete.horizon));
+  v.append(el("div",{class:"cols"},
+    el("div",{class:"card panel"},el("h3",{text:"Parc par type de machine"}),hbars(tally(rows.map(r=>[r.type||"Non précisé",r.nb])),true)),
+    el("div",{class:"card panel"},el("h3",{text:"Parc par énergie"}),hbars(tally(rows.map(r=>[r.energie||"Non précisé",r.nb])),false),el("p",{class:"note",text:"Le plomb et le thermique vieillissants sont les cibles du passage au lithium-ion AntOn."})),
+    el("div",{class:"card panel"},el("h3",{text:"Marques en place"}),hbars(tally(rows.map(r=>[(r.marque||"Non précisé").trim(),r.nb])).slice(0,8),false)),
+    el("div",{class:"card panel"},el("h3",{text:"Prestataires SAV cités"}),hbars(tally(visited.map(d=>[(d.enquete.prestataire||"Non précisé").trim(),1])).slice(0,8),false)),
+    el("div",{class:"card panel"},el("h3",{text:"Visites par secteur"}),hbars(tally(visited.map(d=>[d.secteur||"Autre",1])),false)),
+    el("div",{class:"card panel"},el("h3",{text:"Projets à moins de 24 mois"}),projets.length?el("ul",{class:"proj"},projets.map(d=>el("li",{},el("b",{text:`${d.nom} · ${d.enquete.horizon}`}),d.enquete.projets||"Projet sans détail"))):el("p",{class:"note",text:"Aucun projet daté pour l'instant."}))));
+}
+
+/* ---------- Terrain : position, score, autour de moi, tournée, zones, photos, enrichissement ---------- */
+const BASE={nom:"Boulazac",lat:45.1786,lon:0.7672};
+const DEPARTS=[["boulazac","Boulazac (agence)",45.1786,0.7672],["perigueux","Périgueux",45.1843,0.7213],["bergerac","Bergerac",44.8530,0.4830],["sarlat","Sarlat-la-Canéda",44.8890,1.2160],["terrasson","Terrasson-Lavilledieu",45.1300,1.3000],["riberac","Ribérac",45.2450,0.3390],["nontron","Nontron",45.5290,0.6620],["thiviers","Thiviers",45.4150,0.9200],["montpon","Montpon-Ménestérol",45.0090,0.1600]];
+const SECT_PTS={"Agroalimentaire":25,"Bois et papier":25,"Logistique et distribution":25,"Industrie":20,"Vin et agricole":20,"Matériaux et BTP":15,"Luxe et maroquinerie":10,"Autre":10};
+const EFF_LIB={"00":"0 salarié","01":"1 à 2","02":"3 à 5","03":"6 à 9","11":"10 à 19","12":"20 à 49","21":"50 à 99","22":"100 à 199","31":"200 à 249","32":"250 à 499","41":"500 à 999","42":"1 000 à 1 999","51":"2 000 à 4 999","52":"5 000 à 9 999","53":"10 000 et plus"};
+const RESULTATS=[["rencontre","Rencontré"],["absent","Absent"],["carte","Carte laissée"],["rappeler","À rappeler"],["non","Pas intéressé"]];
+let pos=null;
+
+function haversine(a,b,c,d){const R=6371,t=x=>x*Math.PI/180,dl=t(c-a),dg=t(d-b);const h=Math.sin(dl/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+const hasGeo=d=>d&&isFinite(parseFloat(d.lat))&&isFinite(parseFloat(d.lon));
+const kmFmt=k=>k<10?k.toFixed(1).replace(".",",")+" km":Math.round(k)+" km";
+
+function effPts(d){
+  const tr=d.effectifTr, e=num(d.enquete&&d.enquete.effectif);
+  const byN=n=>n>=250?25:n>=100?20:n>=50?16:n>=20?12:n>=10?8:n>0?3:null;
+  if(tr&&EFF_LIB[tr]){const lo=parseInt(EFF_LIB[tr]);return byN(isFinite(lo)?Math.max(lo,1):0)??3}
+  if(e)return byN(e);
+  return {A:18,B:10,C:4}[d.priorite]??6;
+}
+function score(d){
+  let s=(SECT_PTS[d.secteur]??10)+effPts(d);
+  if(hasGeo(d)){const k=haversine(BASE.lat,BASE.lon,+d.lat,+d.lon);s+=k<=15?20:k<=35?15:k<=60?10:5}else s+=8;
+  const e=d.enquete||{};
+  if(num(e.changer)>=4)s+=10;
+  if(e.horizon==="Moins de 6 mois"||e.horizon==="6 à 12 mois")s+=10;
+  if(e.satisfaction&&num(e.satisfaction)<=2)s+=5;
+  if(String(e.location||"").startsWith("Saisonnier")||e.location==="Récurrent")s+=5;
+  return Math.min(100,Math.round(s));
+}
+const scoreCls=s=>s>=65?"sc-hi":s>=45?"sc-mid":"sc-lo";
+const relanceDue=d=>{const r=d.enquete&&d.enquete.relance;return r&&r<=new Date().toISOString().slice(0,10)};
+const actif=d=>d.statut!=="non"&&d.statut!=="client";
+const mapsDir=(lat,lon)=>`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+const wazeDir=(lat,lon)=>`https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+
+function getPos(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error("La géolocalisation n'est pas disponible sur cet appareil."));navigator.geolocation.getCurrentPosition(p=>{pos={lat:p.coords.latitude,lon:p.coords.longitude,t:Date.now()};res(pos)},e=>rej(new Error(e.code===1?"Autorisez la localisation pour l'appli dans les réglages du téléphone.":"Position introuvable. Réessayez à découvert.")),{enableHighAccuracy:true,timeout:15000,maximumAge:60000})})}
+
+function propRow(id,d,km,extra){
+  const s=score(d), st=d.statut||"contacter";
+  return el("li",{class:"near"},
+    el("div",{class:"near-main"},el("button",{type:"button",class:"lnk",onclick:()=>goFiche(id)},d.nom||"Sans nom"),
+      el("span",{class:"pm",text:[d.adresse||"",d.ville||"",km!=null?"· "+kmFmt(km):""].filter(Boolean).join(" ")})),
+    el("div",{class:"near-side"},el("span",{class:"score "+scoreCls(s),title:"Score de priorité sur 100",text:String(s)}),el("span",{class:`pill s-${st}`,text:statLabel(st)}),relanceDue(d)?el("span",{class:"pill s-suivre",text:"Relance due"}):null),
+    el("div",{class:"near-acts"},
+      hasGeo(d)?el("a",{class:"btn small",href:mapsDir(d.lat,d.lon),target:"_blank",rel:"noopener"},"Google Maps"):null,
+      hasGeo(d)?el("a",{class:"btn small",href:wazeDir(d.lat,d.lon),target:"_blank",rel:"noopener"},"Waze"):null,
+      d.tel?el("a",{class:"btn small",href:"tel:"+String(d.tel).replace(/\s/g,"")},"Appeler"):null,
+      extra||null));
+}
+function goFiche(id){document.querySelector('nav.tabs button[data-tab="p"]').click();openDetail(id)}
+
+/* Autour de moi */
+function renderAutour(){
+  const v=$("#viewG"); v.textContent="";
+  const rayon=renderAutour.r||20;
+  const rSel=el("select",{"aria-label":"Rayon"});[5,10,20,30,50].forEach(r=>rSel.append(el("option",{value:r,text:`${r} km`,selected:r===rayon})));
+  rSel.addEventListener("change",()=>{renderAutour.r=+rSel.value;renderAutour()});
+  const msg=el("span",{class:"saved"});
+  const btn=el("button",{type:"button",class:"btn primary",onclick:async()=>{msg.textContent="Recherche de la position…";try{await getPos();renderAutour()}catch(e){msg.textContent=e.message}}},pos?"Actualiser ma position":"Me localiser");
+  v.append(el("div",{class:"toolbar"},el("div",{class:"grp"},btn,el("span",{class:"mono",text:"dans un rayon de"}),rSel),msg));
+  const noGeo=[...items.values()].filter(d=>!hasGeo(d)).length;
+  if(noGeo)v.append(el("p",{class:"note",text:`${noGeo} fiche${noGeo>1?"s":""} sans coordonnées n'apparaissent pas ici. Onglet Données : « Localiser et compléter les fiches » (une fois, avec du réseau).`}));
+  if(!pos){v.append(el("div",{class:"card empty"},el("strong",{text:"Où êtes-vous ?"}),"Touchez « Me localiser ». Le GPS fonctionne sans réseau : les prospects proches s'affichent, triés par distance et par score."));return}
+  const list=[...items.entries()].filter(([,d])=>hasGeo(d)&&actif(d)).map(([id,d])=>[id,d,haversine(pos.lat,pos.lon,+d.lat,+d.lon)]).filter(x=>x[2]<=rayon).sort((a,b)=>(a[2]-b[2])-(score(b[1])-score(a[1]))*0.15);
+  msg.textContent=`Position relevée à ${new Date(pos.t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}`;
+  if(!list.length){v.append(el("div",{class:"card empty"},el("strong",{text:"Aucun prospect dans ce rayon"}),"Élargissez le rayon, ou ajoutez l'entreprise devant vous depuis l'onglet Zones."));return}
+  v.append(el("ul",{class:"nearlist"},list.map(([id,d,k])=>propRow(id,d,k))));
+}
+
+/* Tournée du jour */
+function planTournee(start,rayon,n){
+  const cand=[...items.entries()].filter(([,d])=>hasGeo(d)&&actif(d)).map(([id,d])=>({id,d,k:haversine(start.lat,start.lon,+d.lat,+d.lon),s:score(d)+(relanceDue(d)?20:0)})).filter(x=>x.k<=rayon).sort((a,b)=>b.s-a.s).slice(0,n);
+  const route=[];let cur={lat:start.lat,lon:start.lon},rest=[...cand],tot=0;
+  while(rest.length){rest.sort((a,b)=>haversine(cur.lat,cur.lon,+a.d.lat,+a.d.lon)-haversine(cur.lat,cur.lon,+b.d.lat,+b.d.lon));const nx=rest.shift();const leg=haversine(cur.lat,cur.lon,+nx.d.lat,+nx.d.lon);tot+=leg;route.push({...nx,leg});cur={lat:+nx.d.lat,lon:+nx.d.lon}}
+  if(route.length)tot+=haversine(cur.lat,cur.lon,start.lat,start.lon);
+  return {route,km:tot*1.3};
+}
+function renderTournee(){
+  const v=$("#viewJ"); v.textContent="";
+  const o=renderTournee.o||(renderTournee.o={dep:"boulazac",r:25,n:6});
+  const dSel=el("select",{"aria-label":"Point de départ"});DEPARTS.forEach(([k,l])=>dSel.append(el("option",{value:k,text:l,selected:o.dep===k})));dSel.append(el("option",{value:"pos",text:"Ma position actuelle",selected:o.dep==="pos"}));
+  const rSel=el("select",{"aria-label":"Rayon"});[15,25,40,60].forEach(r=>rSel.append(el("option",{value:r,text:`${r} km autour`,selected:o.r===r})));
+  const nSel=el("select",{"aria-label":"Nombre de visites"});[4,5,6,7,8].forEach(x=>nSel.append(el("option",{value:x,text:`${x} visites`,selected:o.n===x})));
+  const msg=el("span",{class:"saved"});
+  const upd=async()=>{o.dep=dSel.value;o.r=+rSel.value;o.n=+nSel.value;if(o.dep==="pos"&&!pos){msg.textContent="Recherche de la position…";try{await getPos()}catch(e){msg.textContent=e.message;return}}renderTournee()};
+  [dSel,rSel,nSel].forEach(s=>s.addEventListener("change",upd));
+  v.append(el("div",{class:"toolbar"},el("div",{class:"grp"},dSel,rSel,nSel),msg));
+  let start;if(o.dep==="pos"){if(!pos){v.append(el("div",{class:"card empty"},el("strong",{text:"Position inconnue"}),"Choisissez un point de départ ou autorisez la localisation."));return}start={...pos,nom:"Ma position"}}else{const d=DEPARTS.find(x=>x[0]===o.dep);start={lat:d[2],lon:d[3],nom:d[1]}}
+  const {route,km}=planTournee(start,o.r,o.n);
+  if(!route.length){v.append(el("div",{class:"card empty"},el("strong",{text:"Aucun prospect localisé dans cette zone"}),"Élargissez le rayon, ou localisez les fiches depuis l'onglet Données."));return}
+  const dureeMin=Math.round(km/60*60+route.length*45);
+  const wp=route.slice(0,9).map(x=>`${x.d.lat},${x.d.lon}`).join("|");
+  const gUrl=`https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lon}&destination=${start.lat},${start.lon}&waypoints=${encodeURIComponent(wp)}&travelmode=driving`;
+  v.append(el("div",{class:"card panel",style:"margin-bottom:12px"},
+    el("h3",{text:`${route.length} visites au départ de ${start.nom}`}),
+    el("p",{class:"note",style:"margin:0 0 10px",text:`Environ ${Math.round(km)} km de route et ${Math.floor(dureeMin/60)} h ${String(dureeMin%60).padStart(2,"0")} avec 45 min par visite (estimation à vol d'oiseau × 1,3). Les prospects sont choisis par score, avec un bonus pour les relances dues.`}),
+    el("a",{class:"btn primary",href:gUrl,target:"_blank",rel:"noopener"},"Ouvrir l'itinéraire complet dans Google Maps")));
+  v.append(el("ol",{class:"nearlist route"},route.map((x,i)=>{const li=propRow(x.id,x.d,null,null);li.prepend(el("span",{class:"step",text:String(i+1)}));li.querySelector(".pm").textContent=[x.d.ville||"",`· ${kmFmt(x.leg*1.3)} depuis l'étape précédente`].join(" ");return li})));
+}
+
+/* Zones d'activités */
+function zoneOf(d){return (d.za||"").trim()||(d.ville||"").trim()||"Sans zone"}
+function renderZones(){
+  const v=$("#viewZ"); v.textContent="";
+  const groups=new Map();for(const[id,d]of items){const z=zoneOf(d);if(!groups.has(z))groups.set(z,[]);groups.get(z).push([id,d])}
+  const zones=[...groups.keys()].sort((a,b)=>groups.get(b).length-groups.get(a).length||a.localeCompare(b,"fr"));
+  const cur=renderZones.z&&groups.has(renderZones.z)?renderZones.z:zones[0];
+  const zSel=el("select",{"aria-label":"Zone"});zones.forEach(z=>zSel.append(el("option",{value:z,text:`${z} (${groups.get(z).length})`,selected:z===cur})));
+  zSel.addEventListener("change",()=>{renderZones.z=zSel.value;renderZones()});
+  const nom=el("input",{placeholder:"Nom de l'entreprise","aria-label":"Nom de l'entreprise découverte"}), note=el("input",{placeholder:"Note rapide (activité, contact, matériel vu…)","aria-label":"Note"});
+  const msg=el("span",{class:"saved"});
+  const add=el("button",{type:"button",class:"btn small primary",onclick:async()=>{if(!nom.value.trim()){nom.focus();return}const id=newId();const d={nom:nom.value.trim(),ville:cur==="Sans zone"?"":(groups.get(cur)?.[0]?.[1]?.ville||""),dept:"24",za:cur==="Sans zone"?"":cur,secteur:"",priorite:"C",statut:"contacter",source:"Découverte sur le terrain"+(note.value.trim()?" : "+note.value.trim():""),enquete:{parc:[]},passages:[{date:new Date().toISOString(),res:"rencontre"}],maj:new Date().toISOString()};
+    try{msg.textContent="Position…";const p=await getPos();d.lat=p.lat;d.lon=p.lon;d.geoSrc="gps"}catch(_){}
+    items.set(id,d);saveCache();renderList();msg.textContent=`${d.nom} ajoutée${d.lat?" avec sa position":""}`;nom.value="";note.value="";renderZones()}},"+ Ajouter");
+  v.append(el("div",{class:"toolbar"},el("div",{class:"grp"},zSel),msg));
+  v.append(el("div",{class:"card panel",style:"margin-bottom:12px"},el("h3",{text:"Entreprise découverte dans la zone"}),el("div",{class:"quickadd"},nom,note,add),el("p",{class:"note",text:"Sa position GPS est enregistrée si la localisation est autorisée. Complétez la fiche plus tard."})));
+  if(!cur){v.append(el("div",{class:"card empty"},el("strong",{text:"Aucune zone"}),"Renseignez le champ « Zone d'activités » dans les fiches."));return}
+  const list=groups.get(cur).sort((a,b)=>score(b[1])-score(a[1]));
+  v.append(el("ul",{class:"nearlist"},list.map(([id,d])=>{const last=(d.passages||[]).at(-1);
+    const btns=el("div",{class:"passbtns"},RESULTATS.map(([k,l])=>el("button",{type:"button",class:"btn small"+(last&&last.res===k?" primary":""),onclick:()=>{const nd={...d,passages:[...(d.passages||[]),{date:new Date().toISOString(),res:k}],maj:new Date().toISOString()};if(k==="rappeler")nd.statut="suivre";if(k==="non")nd.statut="non";items.set(id,nd);saveCache();renderList();renderZones()}},l)));
+    const li=propRow(id,d,pos&&hasGeo(d)?haversine(pos.lat,pos.lon,+d.lat,+d.lon):null,null);
+    li.append(el("div",{class:"lastpass",text:last?`Dernier passage : ${(RESULTATS.find(r=>r[0]===last.res)||["",""])[1]}, le ${new Date(last.date).toLocaleDateString("fr-FR")}`:"Jamais visité"}),btns);return li})));
+}
+
+/* Photos (plaque constructeur, carte de visite), stockées sur le téléphone */
+let idbP=null;
+function idb(){if(idbP)return idbP;idbP=new Promise((res,rej)=>{const r=indexedDB.open("tournee_photos",1);r.onupgradeneeded=()=>{const s=r.result.createObjectStore("photos",{keyPath:"id",autoIncrement:true});s.createIndex("pid","pid")};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return idbP}
+async function photosOf(pid){const db_=await idb();return new Promise((res,rej)=>{const q=db_.transaction("photos").objectStore("photos").index("pid").getAll(pid);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function addPhoto(pid,file,kind){const blob=await shrink(file);const db_=await idb();return new Promise((res,rej)=>{const t=db_.transaction("photos","readwrite");t.objectStore("photos").add({pid,kind,date:new Date().toISOString(),blob});t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function delPhoto(id){const db_=await idb();return new Promise(res=>{const t=db_.transaction("photos","readwrite");t.objectStore("photos").delete(id);t.oncomplete=res})}
+function shrink(file){return new Promise(res=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=1400,r=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>res(b||file),"image/jpeg",0.72)};img.onerror=()=>{URL.revokeObjectURL(u);res(file)};img.src=u})}
+function photoBlock(pid){
+  const box=el("div",{class:"photos"}), grid=el("div",{class:"thumbs"});
+  const refresh=async()=>{grid.textContent="";try{const ps=await photosOf(pid);if(!ps.length)grid.append(el("p",{class:"note",text:"Aucune photo pour l'instant."}));ps.forEach(p=>{const u=URL.createObjectURL(p.blob);grid.append(el("figure",{},el("a",{href:u,target:"_blank"},el("img",{src:u,alt:p.kind})),el("figcaption",{},`${p.kind} · ${new Date(p.date).toLocaleDateString("fr-FR")} `,el("button",{type:"button",class:"iconbtn","aria-label":"Supprimer la photo",onclick:async()=>{await delPhoto(p.id);refresh()}},"×"))))})}catch(_){grid.append(el("p",{class:"note",text:"Les photos ne peuvent pas être enregistrées sur cet appareil."}))}};
+  const pick=(kind,label)=>{const inp=el("input",{type:"file",accept:"image/*",capture:"environment",hidden:true});inp.addEventListener("change",async()=>{const f=inp.files[0];inp.value="";if(!f)return;await addPhoto(pid,f,kind);refresh()});return el("label",{class:"btn small"},label,inp)};
+  box.append(el("div",{class:"grp",style:"display:flex;gap:8px;flex-wrap:wrap"},pick("Plaque constructeur","Photo plaque constructeur"),pick("Carte de visite","Photo carte de visite"),pick("Site / matériel","Photo site ou matériel")),grid,
+    el("p",{class:"note",text:"Les photos restent sur ce téléphone (elles ne partent pas dans l'export). Astuce : pour les notes, utilisez le micro du clavier pour dicter."}));
+  refresh();return box;
+}
+
+/* Enrichissement : coordonnées GPS, SIRET, activité, effectif (avec réseau, une fois) */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const norm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+async function enrichOne(d){
+  const out={};
+  try{
+    const q=new URLSearchParams({q:d.nom,per_page:"5"});if(d.cp)q.set("code_postal",d.cp);else if(d.dept&&d.dept!=="Autre")q.set("departement",d.dept);
+    const r=await fetch("https://recherche-entreprises.api.gouv.fr/search?"+q.toString());
+    if(r.ok){const j=await r.json();const res=(j.results||[]);const v=norm(d.ville);
+      let best=null,etab=null;
+      for(const e of res){const cands=[...(e.matching_etablissements||[]),e.siege].filter(Boolean);const m=cands.find(x=>v&&norm(x.libelle_commune).includes(v.split(" ")[0]))||null;if(m){best=e;etab=m;break}}
+      if(!best&&res.length&&!v){best=res[0];etab=(res[0].matching_etablissements||[])[0]||res[0].siege}
+      if(best&&etab){out.siret=etab.siret||best.siege?.siret;out.naf=etab.activite_principale||best.activite_principale;out.effectifTr=best.tranche_effectif_salarie||"";out.raison=best.nom_complet;
+        if(!d.adresse&&etab.adresse)out.adresse=etab.adresse;if(!d.cp&&etab.code_postal)out.cp=etab.code_postal;if(!d.ville&&etab.libelle_commune)out.ville=etab.libelle_commune;
+        if(etab.latitude&&etab.longitude){out.lat=parseFloat(etab.latitude);out.lon=parseFloat(etab.longitude);out.geoSrc="sirene"}}
+    }
+  }catch(_){}
+  await sleep(160);
+  if(!(out.lat||hasGeo(d))){
+    const adr=[out.adresse||d.adresse,out.cp||d.cp,out.ville||d.ville].filter(Boolean).join(" ");
+    if(adr){try{const r=await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q="+encodeURIComponent(adr));if(r.ok){const j=await r.json();const f=(j.features||[])[0];if(f&&f.properties.score>0.45){out.lon=f.geometry.coordinates[0];out.lat=f.geometry.coordinates[1];out.geoSrc=f.properties.type==="municipality"?"commune":"adresse";if(!d.cp&&!out.cp)out.cp=f.properties.postcode}}}catch(_){}await sleep(60)}
+  }
+  return out;
+}
+async function enrichAll(btn,prog){
+  if(navigator.onLine===false){prog.textContent="Pas de réseau : lancez la mise à jour quand vous êtes connecté.";return}
+  const todo=[...items.entries()].filter(([,d])=>!hasGeo(d)||!d.siret);
+  if(!todo.length){prog.textContent="Toutes les fiches sont déjà localisées et complétées.";return}
+  btn.disabled=true;let ok=0,geo=0,i=0;
+  for(const[id,d]of todo){i++;prog.textContent=`Fiche ${i} sur ${todo.length} : ${d.nom}…`;const add=await enrichOne(d);const keys=Object.keys(add).filter(k=>add[k]!==undefined&&add[k]!=="");if(keys.length){const nd={...d};for(const k of keys)if(nd[k]===undefined||nd[k]===""||["lat","lon","geoSrc","siret","naf","effectifTr","raison"].includes(k))nd[k]=add[k];nd.maj=new Date().toISOString();items.set(id,nd);ok++;if(hasGeo(nd))geo++}}
+  saveCache();renderList();btn.disabled=false;
+  const still=[...items.values()].filter(d=>!hasGeo(d)).length;
+  prog.textContent=`Terminé : ${ok} fiche${ok>1?"s":""} complétée${ok>1?"s":""}, ${geo} localisée${geo>1?"s":""}. ${still?still+" fiche"+(still>1?"s":"")+" restent sans position : ajoutez l'adresse dans la fiche puis relancez.":"Toutes les fiches ont une position."}`;
+}
+
+$("#enrichBtn").addEventListener("click",()=>enrichAll($("#enrichBtn"),$("#enrichMsg")));
+/* ---------- Démarrage ---------- */
+function showErr(){}
+renderList(); updSync();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+
+</body></html>
